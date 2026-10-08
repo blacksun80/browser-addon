@@ -19,4 +19,17 @@ describe("getFormFields", () => {
         expect(result.pwFields.map(f => f.DOMelement)).toEqual([shadowRoot.getElementById("password")]);
         expect(result.otherFields[result.actualUsernameIndex].DOMelement.id).toBe("input-username");
     });
+
+    it("treats a field with autocomplete=username as the username field", () => {
+        document.body.innerHTML = `
+            <form>
+                <input id="search" type="text">
+                <input id="input-username" type="email" autocomplete="username">
+            </form>`;
+
+        const result = new FormUtils(logger).getFormFields(document.forms[0], false, 50);
+
+        expect(result.pwFields).toEqual([]);
+        expect(result.otherFields[result.actualUsernameIndex].DOMelement.id).toBe("input-username");
+    });
 });
