@@ -13,6 +13,7 @@ import { Field } from "../common/model/Field";
 import { Entry } from "../common/model/Entry";
 import punycode from "punycode/";
 import NonReactiveStore from "../store/NonReactiveStore";
+import { findInputsInOpenShadowRoots } from "./shadowDom";
 
 interface ScoreMatrix {
     score: number;
@@ -664,6 +665,9 @@ export class FormFilling {
         for (const tag of items) {
             if (!tag.form) orphanedFields.push(tag);
         }
+
+        // Fields in a shadow root are never part of a form in the main document
+        orphanedFields.push(...findInputsInOpenShadowRoots(doc));
 
         if (orphanedFields.length > 0) {
             pseudoForm = {
