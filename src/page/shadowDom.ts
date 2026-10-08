@@ -26,3 +26,15 @@ export function findInputsInOpenShadowRoots(root: Node): HTMLInputElement[] {
         Array.from(shadowRoot.querySelectorAll("input"))
     );
 }
+
+// Whether the shadow host containing this element (directly or through
+// nested shadow roots) is inside a form in the main document
+export function isHostedInForm(element: Element) {
+    let host = element;
+    let root = host.getRootNode();
+    while (root.nodeType === Node.DOCUMENT_FRAGMENT_NODE && (root as ShadowRoot).host) {
+        host = (root as ShadowRoot).host;
+        root = host.getRootNode();
+    }
+    return host !== element && !!host.closest("form");
+}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
-import { findInputsInOpenShadowRoots, findOpenShadowRoots } from "../page/shadowDom";
+import { findInputsInOpenShadowRoots, findOpenShadowRoots, isHostedInForm } from "../page/shadowDom";
 
 function addHost(parent: Node, mode: ShadowRootMode, innerHTML: string) {
     const host = document.createElement("div");
@@ -52,5 +52,25 @@ describe("findInputsInOpenShadowRoots", () => {
     it("includes the shadow root of the starting element itself", () => {
         const { host, shadowRoot } = addHost(document.body, "open", "<input type='password'>");
         expect(findOpenShadowRoots(host)).toEqual([shadowRoot]);
+    });
+});
+
+describe("isHostedInForm", () => {
+    it("is true when the outermost shadow host is inside a form", () => {
+        document.body.innerHTML = "<form></form>";
+        const outer = addHost(document.querySelector("form"), "open", "");
+        const inner = addHost(outer.shadowRoot, "open", "<input type='password'>");
+
+        expect(isHostedInForm(inner.shadowRoot.querySelector("input"))).toBe(true);
+    });
+
+    it("is false when the shadow host is outside any form", () => {
+        const { shadowRoot } = addHost(document.body, "open", "<form><input></form>");
+        expect(isHostedInForm(shadowRoot.querySelector("input"))).toBe(false);
+    });
+
+    it("is false for fields that are not in a shadow root", () => {
+        document.body.innerHTML = "<form><input></form>";
+        expect(isHostedInForm(document.querySelector("input"))).toBe(false);
     });
 });
