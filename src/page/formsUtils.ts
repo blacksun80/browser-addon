@@ -1,6 +1,7 @@
 import { KeeLogger } from "../common/Logger";
 import { MatchedField } from "./MatchedField";
 import { Field } from "../common/model/Field";
+import { findInputsInOpenShadowRoots } from "./shadowDom";
 
 /*
   This contains code related to the management and manipulation of forms and form fields.
@@ -118,23 +119,28 @@ export class FormUtils {
         let usernameIndex = -1;
 
         // search the DOM for any form fields we might be interested in
-        const totalElements = form.elements.length;
+        // Pseudo forms are not DOM nodes and already include any fields from shadow roots
+        const elements =
+            form.nodeType === Node.ELEMENT_NODE
+                ? [...Array.from(form.elements), ...findInputsInOpenShadowRoots(form)]
+                : form.elements;
+        const totalElements = elements.length;
         const elementLimit = totalElements < 2000 ? totalElements : 2000;
         for (let i = 0; i < elementLimit; i++) {
             if (allFields.length > maximumFieldCount) {
                 throw new Error("Too many fields");
             }
             if (
-                form.elements[i].localName.toLowerCase() == "object" ||
-                form.elements[i].localName.toLowerCase() == "keygen" ||
-                form.elements[i].localName.toLowerCase() == "output" ||
-                (form.elements[i].localName.toLowerCase() != "input" &&
-                    (form.elements[i].type == undefined || form.elements[i].type == null))
+                elements[i].localName.toLowerCase() == "object" ||
+                elements[i].localName.toLowerCase() == "keygen" ||
+                elements[i].localName.toLowerCase() == "output" ||
+                (elements[i].localName.toLowerCase() != "input" &&
+                    (elements[i].type == undefined || elements[i].type == null))
             ) {
                 continue; // maybe it's something un-interesting
             }
 
-            const domType: string = form.elements[i].type.toLowerCase();
+            const domType: string = elements[i].type.toLowerCase();
 
             if (domType == "fieldset") continue; // not interested in fieldsets
 
@@ -148,9 +154,9 @@ export class FormUtils {
                 continue; // ignoring other form types
             }
 
-            if (domType == "radio" && isSubmission && form.elements[i].checked == false) continue;
-            if (domType == "password" && isSubmission && !form.elements[i].value) continue;
-            if (domType == "select-one" && isSubmission && !form.elements[i].value) continue;
+            if (domType == "radio" && isSubmission && elements[i].checked == false) continue;
+            if (domType == "password" && isSubmission && !elements[i].value) continue;
+            if (domType == "select-one" && isSubmission && !elements[i].value) continue;
 
             this.Logger.debug(`processing field with domtype ${domType}...`);
             allFields[allFields.length] = {
@@ -158,14 +164,14 @@ export class FormUtils {
                 element: new MatchedField(),
                 type: domType
             };
-            let fieldValue = form.elements[i].value;
+            let fieldValue = elements[i].value;
             if (domType == "checkbox") {
-                if (form.elements[i].checked) fieldValue = "KEEFOX_CHECKED_FLAG_TRUE";
+                if (elements[i].checked) fieldValue = "KEEFOX_CHECKED_FLAG_TRUE";
                 else fieldValue = "KEEFOX_CHECKED_FLAG_FALSE";
             }
-            const field = Field.fromDOM(form.elements[i], domType, fieldValue);
+            const field = Field.fromDOM(elements[i], domType, fieldValue);
             allFields[allFields.length - 1].element.field = field;
-            allFields[allFields.length - 1].element.DOMelement = form.elements[i];
+            allFields[allFields.length - 1].element.DOMelement = elements[i];
 
             if (domType == "password" && firstPasswordIndex == -1) {
                 firstPasswordIndex = allFields.length - 1;
@@ -174,14 +180,14 @@ export class FormUtils {
             if (
                 this.isATextFormFieldType(domType) &&
                 firstPossibleUsernameIndex == -1 &&
-                (this.isAKnownUsernameString(form.elements[i].name) ||
+                (this.isAKnownUsernameString(elements[i].name) ||
                     field.locators[0].labels?.some(label => this.isAKnownUsernameString(label)))
             ) {
                 firstPossibleUsernameIndex = allFields.length - 1;
             }
 
-            if (form.elements[i].keeInitialDetectedValue == null) {
-                form.elements[i].keeInitialDetectedValue = fieldValue;
+            if (elements[i].keeInitialDetectedValue == null) {
+                elements[i].keeInitialDetectedValue = fieldValue;
             }
         }
 

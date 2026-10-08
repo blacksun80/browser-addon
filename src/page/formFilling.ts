@@ -13,6 +13,7 @@ import { Field } from "../common/model/Field";
 import { Entry } from "../common/model/Entry";
 import punycode from "punycode/";
 import NonReactiveStore from "../store/NonReactiveStore";
+import { findInputsInOpenShadowRoots, isHostedInForm } from "./shadowDom";
 
 interface ScoreMatrix {
     score: number;
@@ -664,6 +665,11 @@ export class FormFilling {
         for (const tag of items) {
             if (!tag.form) orphanedFields.push(tag);
         }
+
+        // Fields in shadow roots are added to the form containing their host, if any
+        orphanedFields.push(
+            ...findInputsInOpenShadowRoots(doc).filter(input => !isHostedInForm(input))
+        );
 
         if (orphanedFields.length > 0) {
             pseudoForm = {

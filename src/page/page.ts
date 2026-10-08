@@ -10,6 +10,7 @@ import { Action } from "../common/Action";
 import { Port } from "../common/port";
 import NonReactiveStore from "../store/NonReactiveStore";
 import { Mutation } from "../store/Mutation";
+import { findOpenShadowRoots } from "./shadowDom";
 
 /* This orchestrates the main functions of the add-on
 on all website pages except those containing a KPRPC server */
@@ -52,6 +53,21 @@ let inputsObserver: MutationObserver;
 if (document.body) {
 
     inputsObserver = new MutationObserver((mutations, observer) => {
+        // Mutations inside a shadow root are not reported to observers of the
+        // main document so we start observing any newly added open shadow roots.
+        // This must happen even if we decide not to rescan the page right now.
+        let shadowFieldsAdded = false;
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                const shadowRoots = findOpenShadowRoots(node);
+                observeShadowRoots(shadowRoots);
+                if (shadowRoots.some(shadowRoot => shadowRoot.querySelector("form, input, select"))) {
+                    shadowFieldsAdded = true;
+                }
+            });
+        });
+
         // If we have already scheduled a rescan recently, no further action required
         if (formFilling.formFinderTimer !== null) return;
 
@@ -68,7 +84,7 @@ if (document.body) {
         // Only proceed if we have a DB to search
         if (!store?.state.connected || store?.state.ActiveKeePassDatabaseIndex < 0) return;
 
-        let rescan = false;
+        let rescan = shadowFieldsAdded;
         const interestingNodes = ["form", "input", "select"];
         mutations.forEach(mutation => {
             if (rescan) return;
@@ -94,6 +110,12 @@ if (document.body) {
             );
         }
     });
+
+    function observeShadowRoots(shadowRoots: ShadowRoot[]) {
+        shadowRoots.forEach(shadowRoot =>
+            inputsObserver.observe(shadowRoot, { childList: true, subtree: true })
+        );
+    }
 
     function matchFinder(uri: string) {
         Port.postMessage({ findMatches: { uri } });
@@ -142,6 +164,7 @@ if (document.body) {
         passwordGenerator = new PasswordGenerator(frameId);
 
         inputsObserver.observe(document.body, { childList: true, subtree: true });
+        observeShadowRoots(findOpenShadowRoots(document.body));
 
         tutorialIntegration();
     }
