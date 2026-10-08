@@ -175,7 +175,8 @@ export class FormUtils {
                 this.isATextFormFieldType(domType) &&
                 firstPossibleUsernameIndex == -1 &&
                 (this.isAKnownUsernameString(form.elements[i].name) ||
-                    field.locators[0].labels?.some(label => this.isAKnownUsernameString(label)))
+                    field.locators[0].labels?.some(label => this.isAKnownUsernameString(label)) ||
+                    field.locators[0].autocompleteValues?.includes("username"))
             ) {
                 firstPossibleUsernameIndex = allFields.length - 1;
             }

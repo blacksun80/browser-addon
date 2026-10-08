@@ -590,10 +590,16 @@ export class FormFilling {
                 otherFields.length <= 0 ||
                 otherFields[usernameIndex] == null;
 
-            if (noPasswordField && (noOtherField || interestingForm !== true)) {
+            // The first step of a multi-step login form often only contains the
+            // username field so we treat it like a whitelisted field if the site says so
+            const usernameAutocomplete =
+                !noOtherField &&
+                otherFields[usernameIndex].field.locators[0].autocompleteValues?.includes("username");
+
+            if (noPasswordField && (noOtherField || (interestingForm !== true && !usernameAutocomplete))) {
                 this.Logger.debug(
                     "No password field found in this form and either there are no other" +
-                        " fields or no whitelisted text field or form element"
+                        " fields or no whitelisted or autocomplete=username text field or form element"
                 );
                 continue;
             }
